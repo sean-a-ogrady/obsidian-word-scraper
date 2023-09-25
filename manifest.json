@@ -1,11 +1,11 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "word-scraper",
+	"name": "Word Scraper",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "This is a sample plugin for Obsidian. This plugin demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
+	"description": "This is a plugin that captures the words you type into a new markdown file every day.",
+	"author": "Sean O'Grady",
+	"authorUrl": "https://github.com/sean-a-ogrady",
 	"fundingUrl": "https://obsidian.md/pricing",
 	"isDesktopOnly": false
 }

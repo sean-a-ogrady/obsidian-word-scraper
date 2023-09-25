@@ -2,16 +2,16 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
 
 // Remember to rename these classes and interfaces!
 
-interface MyPluginSettings {
-	mySetting: string;
+interface WordScraperSettings {
+	lastUpdated: string;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+const DEFAULT_SETTINGS: WordScraperSettings = {
+	lastUpdated: ''
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class WordScraperPlugin extends Plugin {
+	settings: WordScraperSettings;
 
 	async onload() {
 		await this.loadSettings();
@@ -108,9 +108,9 @@ class SampleModal extends Modal {
 }
 
 class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+	plugin: WordScraperPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: WordScraperPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -125,9 +125,9 @@ class SampleSettingTab extends PluginSettingTab {
 			.setDesc('It\'s a secret')
 			.addText(text => text
 				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+				.setValue(this.plugin.settings.lastUpdated)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.lastUpdated = value;
 					await this.plugin.saveSettings();
 				}));
 	}
