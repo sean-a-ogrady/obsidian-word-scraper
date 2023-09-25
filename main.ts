@@ -22,10 +22,10 @@ export default class WordScraperPlugin extends Plugin {
 
 		this.registerInterval(window.setInterval(this.checkDateAndReset.bind(this), 60 * 1000));  // Check every minute
 
-		this.registerCodeMirror((cm: CodeMirror.Editor) => {
-			cm.on("change", this.handleChange.bind(this));
-		});
-
+		this.registerEvent(
+			this.app.workspace.on('editor-change', this.handleChange.bind(this))
+		);
+		
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon('pencil', 'Word Scraper', async (evt: MouseEvent) => {
             await this.openDailyWordFile();
@@ -63,14 +63,16 @@ export default class WordScraperPlugin extends Plugin {
 		this.dailyMdFile = null;
 	}
 
-	private async handleChange(cm: CodeMirror.Editor, change: any): Promise<void> {
-		const newWords = change.text.join(" ").match(/\b\w+\b/g);
+	private async handleChange(change: Editor): Promise<void> {
+		const cm = change;  // Directly accessing the CodeMirror instance
+		const newWords = cm.getValue().match(/\b\w+\b/g);
 		if (newWords) {
 			this.wordList.push(...newWords);
 			this.statusBar.setText(`${this.wordList.length} words today`);
 		}
 		await this.updateDailyMdFile();
-	}
+	}	
+	  
 
 	private async updateDailyMdFile(): Promise<void> {
 		try {
