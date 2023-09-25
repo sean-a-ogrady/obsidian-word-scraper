@@ -1,16 +1,13 @@
-import { App, Editor, MarkdownView, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, addIcon, TFile } from 'obsidian';
 
-// Interface for plugin settings
 interface WordScraperSettings {
 	lastUpdated: string;
 }
 
-// Default settings
 const DEFAULT_SETTINGS: WordScraperSettings = {
 	lastUpdated: ''
 }
 
-// Main plugin class
 export default class WordScraperPlugin extends Plugin {
 	settings: WordScraperSettings;
 	private wordFrequency: { [key: string]: number } = {};
@@ -22,63 +19,72 @@ export default class WordScraperPlugin extends Plugin {
 	private currentFile: string = "";
 	private lastContent: string = "";
 
-	// Plugin initialization
 	async onload() {
 		await this.loadSettings();
 
-		// Check for date change every minute
 		this.registerInterval(window.setInterval(this.checkDateAndReset.bind(this), 60 * 1000));
 
-		// Register editor change event
 		this.registerEvent(
 			this.app.workspace.on('editor-change', this.handleChange.bind(this))
 		);
 
-		// Add status bar item
+		const ribbonIconEl = this.addRibbonIcon('pencil', 'Word Scraper', async (evt: MouseEvent) => {
+			await this.openDailyWordFile();
+		});
+		ribbonIconEl.addClass('word-scraper-ribbon');
+
+		this.addCommand({
+			id: 'open-daily-word-file',
+			name: 'Open Daily Word File',
+			callback: async () => {
+				await this.openDailyWordFile();
+			}
+		});
+
 		this.statusBar = this.addStatusBarItem();
 		this.statusBar.setText(`0 unique words today`);
 
-		// Add settings tab
 		this.addSettingTab(new SampleSettingTab(this.app, this));
+
+		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
+			console.log('click', evt);
+		});
 	}
 
-	// Cleanup when plugin is disabled
 	onunload() {
 		this.wordFrequency = {};
 		this.dailyMdFile = null;
 	}
 
-	// Handle editor changes
 	private async handleChange(change: Editor): Promise<void> {
 		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (activeView && activeView.editor === change) {
 			const newContent = change.getValue();
 			const activeFile = this.app.workspace.getActiveFile();
 
-			// Check if the file has changed
 			if (activeFile && activeFile.path !== this.currentFile) {
 				this.currentFile = activeFile.path;
 				this.fileInitialized = false;
 			}
 
-			// Initialize lastContent for the new file
 			if (!this.fileInitialized) {
 				this.lastContent = newContent;
 				this.fileInitialized = true;
 				return;
 			}
 
-			// Calculate added and removed content
 			const addedContent = newContent.replace(this.lastContent, "").trim();
 			const removedContent = this.lastContent.replace(newContent, "").trim();
 
-			// Update word frequency for added content
 			const addedWords = addedContent.match(/\b\w+\b/g) || [];
 			for (const word of addedWords) {
-				this.wordFrequency[word] = (this.wordFrequency[word] || 0) + 1;
+				if (this.wordFrequency[word]) {
+					this.wordFrequency[word]++;
+				} else {
+					this.wordFrequency[word] = 1;
+				}
 			}
 
-			// Update word frequency for removed content
 			const removedWords = removedContent.match(/\b\w+\b/g) || [];
 			for (const word of removedWords) {
 				if (this.wordFrequency[word]) {
@@ -89,25 +95,21 @@ export default class WordScraperPlugin extends Plugin {
 				}
 			}
 
-			// Update last known content
 			this.lastContent = newContent;
 
-			// Update status bar
 			const totalWords = Object.keys(this.wordFrequency).length;
 			this.statusBar.setText(`${totalWords} unique words today`);
 
-			// Schedule update for the daily Markdown file
 			if (!this.updateScheduled) {
 				this.updateScheduled = true;
 				setTimeout(async () => {
 					await this.updateDailyMdFile();
 					this.updateScheduled = false;
-				}, 10000);  // 10 seconds for testing
+				}, 10000);
 			}
 		}
 	}
 
-	// Update the daily Markdown file
 	private async updateDailyMdFile(): Promise<void> {
 		try {
 			const vault = this.app.vault;
@@ -136,7 +138,6 @@ export default class WordScraperPlugin extends Plugin {
 		}
 	}
 
-	// Check for date change and reset word frequency
 	private async checkDateAndReset(): Promise<void> {
 		const currentDate = new Date().toISOString().slice(0, 10);
 		if (currentDate !== this.lastKnownDate) {
@@ -147,18 +148,51 @@ export default class WordScraperPlugin extends Plugin {
 		}
 	}
 
-	// Load plugin settings
+	private async openDailyWordFile(): Promise<void> {
+		const vault = this.app.vault;
+		const today = new Date().toISOString().slice(0, 10);
+		const fileName = `WordCloud-${today}.md`;
+
+		if (!this.dailyMdFile) {
+			this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
+		}
+
+		if (!this.dailyMdFile) {
+			this.dailyMdFile = await vault.create(fileName, '');
+		}
+
+		if (this.dailyMdFile) {
+			this.app.workspace.getLeaf().openFile(this.dailyMdFile);
+		} else {
+			new Notice('Failed to open or create daily word file.');
+		}
+	}
+
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
 
-	// Save plugin settings
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
 }
 
-// Settings tab
+class SampleModal extends Modal {
+	constructor(app: App) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.setText('Woah!');
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
+
 class SampleSettingTab extends PluginSettingTab {
 	plugin: WordScraperPlugin;
 
