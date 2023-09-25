@@ -27,24 +27,23 @@ export default class WordScraperPlugin extends Plugin {
 		});
 
 		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('pencil', 'Word Scraper', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('Word Scraper Clicked!');
-		});
-		ribbonIconEl.addClass('word-scraper-ribbon');
+		const ribbonIconEl = this.addRibbonIcon('pencil', 'Word Scraper', async (evt: MouseEvent) => {
+            await this.openDailyWordFile();
+        });
+        ribbonIconEl.addClass('word-scraper-ribbon');
+
+        // Add a new command
+        this.addCommand({
+            id: 'open-daily-word-file',
+            name: 'Open Daily Word File',
+            callback: async () => {
+                await this.openDailyWordFile();
+            }
+        });
 
 		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
 		this.statusBar = this.addStatusBarItem();
 		this.statusBar.setText(`${this.wordList.length} words today`);
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
@@ -110,6 +109,27 @@ export default class WordScraperPlugin extends Plugin {
 			await this.updateDailyMdFile();  // Create a new file for the new day
 		}
 	}
+
+	private async openDailyWordFile(): Promise<void> {
+		const vault = this.app.vault;
+		const today = new Date().toISOString().slice(0, 10);
+		const fileName = `WordCloud-${today}.md`;
+	
+		if (!this.dailyMdFile) {
+			this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
+		}
+	
+		if (!this.dailyMdFile) {
+			this.dailyMdFile = await vault.create(fileName, '');
+		}
+	
+		if (this.dailyMdFile) {
+			this.app.workspace.getLeaf().openFile(this.dailyMdFile);
+		} else {
+			new Notice('Failed to open or create daily word file.');
+		}
+	}
+	
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
