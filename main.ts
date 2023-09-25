@@ -57,6 +57,11 @@ export default class WordScraperPlugin extends Plugin {
 	}
 
 	private async handleChange(change: Editor): Promise<void> {
+		// Check if the editor is in the main workspace
+		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (activeView && activeView.editor === change) {
+			
+		
 		const newContent = change.getValue();
 		const activeFile = this.app.workspace.getActiveFile();
 
@@ -114,6 +119,7 @@ export default class WordScraperPlugin extends Plugin {
 			}, 10000);  // 10 seconds for testing
 		}
 	}
+}
 
 
 	private async updateDailyMdFile(): Promise<void> {
