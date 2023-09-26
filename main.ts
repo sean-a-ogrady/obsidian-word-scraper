@@ -113,7 +113,7 @@ export default class WordScraperPlugin extends Plugin {
 			newWords.forEach(word => newWordFrequency[word] = (newWordFrequency[word] || 0) + 1);
 
 			// Update global word frequency
-			for (const word of new Set([...oldWords, ...newWords])) {
+			for (const word of new Set([...Object.keys(oldWordFrequency), ...Object.keys(newWordFrequency)])) {
 				const oldCount = oldWordFrequency[word] || 0;
 				const newCount = newWordFrequency[word] || 0;
 				const delta = newCount - oldCount;
@@ -128,6 +128,7 @@ export default class WordScraperPlugin extends Plugin {
 					delete this.wordFrequency[word];
 				}
 			}
+
 
 			// Update last known content
 			this.lastContent = newContent;
@@ -170,9 +171,9 @@ export default class WordScraperPlugin extends Plugin {
 				'```',
 				'',
 				...Object.entries(this.wordFrequency)
-					.filter(([word, count]) => 
-						Object.prototype.hasOwnProperty.call(this.wordFrequency, word) && 
-						typeof count === 'number' && 
+					.filter(([word, count]) =>
+						Object.prototype.hasOwnProperty.call(this.wordFrequency, word) &&
+						typeof count === 'number' &&
 						count > 0
 					)
 					.map(([word, count]) => `${word}: ${count}`)
@@ -200,7 +201,7 @@ export default class WordScraperPlugin extends Plugin {
 	private async openDailyWordFile(): Promise<void> {
 		const vault = this.app.vault;
 		const today = new Date().toISOString().slice(0, 10);
-		const fileName = `WordCloud-${today}.md`;
+		const fileName = `WordScraper-${today}.md`;
 
 		if (!this.dailyMdFile) {
 			this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
