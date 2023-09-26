@@ -46,9 +46,6 @@ export default class WordScraperPlugin extends Plugin {
 
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
 	}
 
 	onunload() {
@@ -61,22 +58,27 @@ export default class WordScraperPlugin extends Plugin {
 		if (activeView && activeView.editor === change) {
 			const newContent = change.getValue();
 			const activeFile = this.app.workspace.getActiveFile();
-
+	
 			if (activeFile && activeFile.path !== this.currentFile) {
 				this.currentFile = activeFile.path;
 				this.fileInitialized = false;
 			}
-
+	
 			if (!this.fileInitialized) {
 				this.lastContent = newContent;
 				this.fileInitialized = true;
 				return;
 			}
-
-			const addedContent = newContent.replace(this.lastContent, "").trim();
-			const removedContent = this.lastContent.replace(newContent, "").trim();
-
-			const addedWords = addedContent.match(/\b\w+\b/g) || [];
+	
+			// Split the old and new content into words
+			const oldWords = (this.lastContent.match(/\b\w+\b/g) || []) as string[];
+			const newWords = (newContent.match(/\b\w+\b/g) || []) as string[];
+	
+			// Find added and removed words
+			const addedWords = newWords.filter(word => !oldWords.includes(word));
+			const removedWords = oldWords.filter(word => !newWords.includes(word));
+	
+			// Update word frequency for added content
 			for (const word of addedWords) {
 				if (this.wordFrequency[word]) {
 					this.wordFrequency[word]++;
@@ -84,8 +86,8 @@ export default class WordScraperPlugin extends Plugin {
 					this.wordFrequency[word] = 1;
 				}
 			}
-
-			const removedWords = removedContent.match(/\b\w+\b/g) || [];
+	
+			// Update word frequency for removed content
 			for (const word of removedWords) {
 				if (this.wordFrequency[word]) {
 					this.wordFrequency[word]--;
@@ -94,27 +96,33 @@ export default class WordScraperPlugin extends Plugin {
 					}
 				}
 			}
-
+	
+			// Update last known content
 			this.lastContent = newContent;
-
+	
+			// Update status bar
 			const totalWords = Object.keys(this.wordFrequency).length;
 			this.statusBar.setText(`${totalWords} unique words today`);
-
+	
+			// Schedule an update for the daily MD file
 			if (!this.updateScheduled) {
 				this.updateScheduled = true;
 				setTimeout(async () => {
 					await this.updateDailyMdFile();
 					this.updateScheduled = false;
-				}, 10000);
+				}, 1000);
 			}
 		}
 	}
+	
+
+
 
 	private async updateDailyMdFile(): Promise<void> {
 		try {
 			const vault = this.app.vault;
 			const today = new Date().toISOString().slice(0, 10);
-			const fileName = `WordCloud-${today}.md`;
+			const fileName = `WordScraper-${today}.md`;
 
 			if (!this.dailyMdFile) {
 				this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
@@ -174,22 +182,6 @@ export default class WordScraperPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
 	}
 }
 
