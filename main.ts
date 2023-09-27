@@ -94,7 +94,7 @@ export default class WordScraperPlugin extends Plugin {
 			const activeFile = this.app.workspace.getActiveFile();
 
 			// Check if the file is in an excluded folder
-			const excludedFolders = this.settings.excludedFolders.split('\n');
+			const excludedFolders = this.settings.excludedFolders.split('\n').filter(Boolean); // Filter out empty strings
 			if (activeFile && excludedFolders.some(folder => activeFile.path.startsWith(folder))) {
 				return; // Skip this file
 			}
@@ -265,7 +265,7 @@ class WordScraperSettingTab extends PluginSettingTab {
 				}));
 		new Setting(containerEl)
 			.setName('Excluded Folders')
-			.setDesc('Enter folder names to exclude, separated by new lines.')
+			.setDesc('Enter folder names to exclude scraping, separated by new lines.')
 			.addTextArea(text => text
 				.setPlaceholder('Enter folder names')
 				.setValue(this.plugin.settings.excludedFolders)
