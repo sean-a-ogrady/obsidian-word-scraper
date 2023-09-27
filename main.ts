@@ -8,6 +8,8 @@ interface WordScraperSettings {
 	excludedFolders: string;
 	updateFrequency: number;
 	stopwords: string;
+	enableJsonExport: boolean;
+	jsonExportPath: string;
 }
 
 // Define an interface to hold the plugin's state
@@ -24,7 +26,9 @@ const DEFAULT_SETTINGS: WordScraperSettings = {
 	folderPath: '', // Default at root folder
 	excludedFolders: '',
 	updateFrequency: 10000,
-	stopwords: ''
+	stopwords: '',
+	enableJsonExport: false,
+	jsonExportPath: ''
 }
 
 // Main plugin class
@@ -98,6 +102,16 @@ export default class WordScraperPlugin extends Plugin {
 				await this.openDailyWordFile();
 			}
 		});
+
+		// Add a command to export current WordScraper file to JSON
+		this.addCommand({
+			id: 'export-word-frequency-to-json',
+			name: 'Export Word Frequency to JSON',
+			callback: async () => {
+				await this.exportToJson();
+			}
+		});
+		
 
 		// Add a status bar item to show the number of unique words
 		//this.statusBar = this.addStatusBarItem();
@@ -255,10 +269,6 @@ export default class WordScraperPlugin extends Plugin {
 
 			// Generate the content with additional checks
 			const content = [
-				'```wordcloud',
-				'source: file',
-				'```',
-				'',
 				...Object.entries(this.wordFrequency)
 					.filter(([word, count]) =>
 						Object.prototype.hasOwnProperty.call(this.wordFrequency, word) &&
@@ -280,6 +290,7 @@ export default class WordScraperPlugin extends Plugin {
 		//console.log("Checking date and resetting if needed...");
 		const currentDate = new Date().toISOString().slice(0, 10);
 		if (currentDate !== this.state.lastKnownDate) {
+			await this.exportToJson();
 			// Reset the state variables
 			this.state.wordFrequency = {};
 			this.state.lastKnownDate = currentDate;
@@ -313,6 +324,26 @@ export default class WordScraperPlugin extends Plugin {
 		} else {
 			new Notice('Failed to open or create daily word file.');
 		}
+	}
+
+	private async exportToJson(): Promise<void> {
+		if (!this.dailyMdFile || !this.settings.enableJsonExport) {
+			return;
+		}
+	
+		const vault = this.app.vault;
+		const jsonExportPath = this.settings.jsonExportPath || this.settings.folderPath;
+		const jsonFileName = `${jsonExportPath}/${this.dailyMdFile.basename}.json`;
+	
+		const jsonData = Object.entries(this.wordFrequency)
+			.map(([word, frequency]) => ({ word, frequency }))
+			.filter(entry => entry.frequency > 0);
+	
+		if (jsonData.length === 0) {
+			return;
+		}
+	
+		await vault.create(jsonFileName, JSON.stringify(jsonData, null, 2));
 	}
 
 	// Load settings from disk
@@ -383,6 +414,25 @@ class WordScraperSettingTab extends PluginSettingTab {
 					this.plugin.settings.stopwords = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setName('Enable JSON Export')
+			.setDesc('Toggle to enable JSON export. When a new WordScraper file is created, a JSON file of the previous one will be created.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableJsonExport)
+				.onChange(async (value) => {
+					this.plugin.settings.enableJsonExport = value;
+					await this.plugin.saveSettings();
+				}));
 
+		new Setting(containerEl)
+			.setName('JSON Export Path')
+			.setDesc('Specify the folder path to export the JSON file.')
+			.addText(text => text
+				.setPlaceholder('Enter JSON export path')
+				.setValue(this.plugin.settings.jsonExportPath)
+				.onChange(async (value) => {
+					this.plugin.settings.jsonExportPath = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 }
