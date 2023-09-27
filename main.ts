@@ -31,6 +31,12 @@ const DEFAULT_SETTINGS: WordScraperSettings = {
 	jsonExportPath: ''
 }
 
+// Bug fix for faulty date interpretation
+function getLocalDate() {
+	const now = new Date();
+	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 // Main plugin class
 export default class WordScraperPlugin extends Plugin {
 	settings: WordScraperSettings;
@@ -43,7 +49,7 @@ export default class WordScraperPlugin extends Plugin {
 	private dailyMdFile: TFile | null = null;
 
 	// Last known date to check for daily reset
-	private lastKnownDate: string = new Date().toISOString().slice(0, 10);
+	private lastKnownDate: string = getLocalDate();
 
 	// Status bar element
 	private statusBar: HTMLElement;
@@ -74,7 +80,7 @@ export default class WordScraperPlugin extends Plugin {
 		} else {
 			this.state = {
 				wordFrequency: {},
-				lastKnownDate: new Date().toISOString().slice(0, 10),
+				lastKnownDate: getLocalDate(),
 				currentFile: "",
 				lastContent: ""
 			};
@@ -111,7 +117,7 @@ export default class WordScraperPlugin extends Plugin {
 				await this.exportToJson();
 			}
 		});
-		
+
 
 		// Add a status bar item to show the number of unique words
 		//this.statusBar = this.addStatusBarItem();
@@ -232,7 +238,7 @@ export default class WordScraperPlugin extends Plugin {
 		try {
 			// Get or create the daily file
 			const vault = this.app.vault;
-			const today = new Date().toISOString().slice(0, 10);
+			const today = getLocalDate();
 
 			// Ensure folderPath does not have a trailing '/'
 			let folderPath = this.settings.folderPath.endsWith('/') ?
@@ -288,7 +294,7 @@ export default class WordScraperPlugin extends Plugin {
 	// Reset the word frequency and daily file at midnight
 	private async checkDateAndReset(): Promise<void> {
 		//console.log("Checking date and resetting if needed...");
-		const currentDate = new Date().toISOString().slice(0, 10);
+		const currentDate = getLocalDate();
 		if (currentDate !== this.state.lastKnownDate) {
 			await this.exportToJson();
 			// Reset the state variables
@@ -308,7 +314,7 @@ export default class WordScraperPlugin extends Plugin {
 	private async openDailyWordFile(): Promise<void> {
 		//console.log("Opening daily word file...");
 		const vault = this.app.vault;
-		const today = new Date().toISOString().slice(0, 10);
+		const today = getLocalDate();
 		const fileName = `${this.settings.folderPath}/WordScraper-${today}.md`;
 
 		if (!this.dailyMdFile) {
@@ -330,19 +336,19 @@ export default class WordScraperPlugin extends Plugin {
 		if (!this.dailyMdFile || !this.settings.enableJsonExport) {
 			return;
 		}
-	
+
 		const vault = this.app.vault;
 		const jsonExportPath = this.settings.jsonExportPath || this.settings.folderPath;
 		const jsonFileName = `${jsonExportPath}/${this.dailyMdFile.basename}.json`;
-	
+
 		const jsonData = Object.entries(this.wordFrequency)
 			.map(([word, frequency]) => ({ word, frequency }))
 			.filter(entry => entry.frequency > 0);
-	
+
 		if (jsonData.length === 0) {
 			return;
 		}
-	
+
 		await vault.create(jsonFileName, JSON.stringify(jsonData, null, 2));
 	}
 
