@@ -5,12 +5,14 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
 interface WordScraperSettings {
 	lastUpdated: string;
 	folderPath: string;
+	excludedFolders: string;
 }
 
 // Default settings
 const DEFAULT_SETTINGS: WordScraperSettings = {
 	lastUpdated: '',
-	folderPath: '/' // Default at root folder
+	folderPath: '/', // Default at root folder
+	excludedFolders: ''
 }
 
 // Main plugin class
@@ -90,6 +92,12 @@ export default class WordScraperPlugin extends Plugin {
 
 			// Get the active file
 			const activeFile = this.app.workspace.getActiveFile();
+
+			// Check if the file is in an excluded folder
+			const excludedFolders = this.settings.excludedFolders.split('\n');
+			if (activeFile && excludedFolders.some(folder => activeFile.path.startsWith(folder))) {
+				return; // Skip this file
+			}
 
 			// Check if the file has changed
 			if (activeFile && activeFile.path !== this.currentFile) {
@@ -255,5 +263,16 @@ class WordScraperSettingTab extends PluginSettingTab {
 					this.plugin.settings.folderPath = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setName('Excluded Folders')
+			.setDesc('Enter folder names to exclude, separated by new lines.')
+			.addTextArea(text => text
+				.setPlaceholder('Enter folder names')
+				.setValue(this.plugin.settings.excludedFolders)
+				.onChange(async (value) => {
+					this.plugin.settings.excludedFolders = value;
+					await this.plugin.saveSettings();
+				}));
+
 	}
 }
