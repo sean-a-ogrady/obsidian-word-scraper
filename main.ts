@@ -172,14 +172,13 @@ export default class WordScraperPlugin extends Plugin {
 			// Split the old and new content into words and convert to lowercase
 			const stopwords = new Set(this.settings.stopwords.split('\n').map(word => word.trim().toLowerCase()));
 
-			const oldWords = (this.lastContent.match(/\b\w+\b/g) || [])
+			const oldWords = (this.lastContent.match(/\b\w*[a-zA-Z]+\w*\b/g) || [])
 				.map(word => word.toLowerCase())
 				.filter(word => !stopwords.has(word)) as string[];
 
-			const newWords = (newContent.match(/\b\w+\b/g) || [])
+			const newWords = (newContent.match(/\b\w*[a-zA-Z]+\w*\b/g) || [])
 				.map(word => word.toLowerCase())
 				.filter(word => !stopwords.has(word)) as string[];
-
 
 			// Create frequency maps for old and new words
 			const oldWordFrequency: { [key: string]: number } = {};
