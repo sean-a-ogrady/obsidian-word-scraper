@@ -1,5 +1,5 @@
 // Import Obsidian API and types
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, addIcon, TFile } from 'obsidian';
+import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 
 // Define the settings interface
 interface WordScraperSettings {
@@ -56,6 +56,9 @@ export default class WordScraperPlugin extends Plugin {
 		//console.log("Loaded state:", savedState);
 		if (savedState) {
 			this.state = savedState;
+			this.wordFrequency = Object.fromEntries(
+				Object.entries(this.state.wordFrequency).map(([key, value]) => [key.toLowerCase(), value])
+			);
 			this.wordFrequency = this.state.wordFrequency;
 			this.lastKnownDate = this.state.lastKnownDate;
 			this.currentFile = this.state.currentFile;
@@ -93,8 +96,8 @@ export default class WordScraperPlugin extends Plugin {
 		});
 
 		// Add a status bar item to show the number of unique words
-		this.statusBar = this.addStatusBarItem();
-		this.statusBar.setText(`0 unique words today`);
+		//this.statusBar = this.addStatusBarItem();
+		//this.statusBar.setText(`0 unique words today`);
 
 		// Add a settings tab
 		this.addSettingTab(new WordScraperSettingTab(this.app, this));
@@ -141,9 +144,9 @@ export default class WordScraperPlugin extends Plugin {
 				return;
 			}
 
-			// Split the old and new content into words
-			const oldWords = (this.lastContent.match(/\b\w+\b/g) || []) as string[];
-			const newWords = (newContent.match(/\b\w+\b/g) || []) as string[];
+			// Split the old and new content into words and convert to lowercase
+			const oldWords = (this.lastContent.match(/\b\w+\b/g) || []).map(word => word.toLowerCase()) as string[];
+			const newWords = (newContent.match(/\b\w+\b/g) || []).map(word => word.toLowerCase()) as string[];
 
 			// Create frequency maps for old and new words
 			const oldWordFrequency: { [key: string]: number } = {};
@@ -157,24 +160,25 @@ export default class WordScraperPlugin extends Plugin {
 				const newCount = newWordFrequency[word] || 0;
 				const delta = newCount - oldCount;
 
-				if (this.wordFrequency[word]) {
-					this.wordFrequency[word] += delta;
+				const lowerCaseWord = word.toLowerCase(); // Convert the word to lowercase
+
+				if (this.wordFrequency[lowerCaseWord]) {
+					this.wordFrequency[lowerCaseWord] += delta; // Use the lowercase word as the key
 				} else {
-					this.wordFrequency[word] = delta;
+					this.wordFrequency[lowerCaseWord] = delta; // Use the lowercase word as the key
 				}
 
-				if (this.wordFrequency[word] <= 0) {
-					delete this.wordFrequency[word];
+				if (this.wordFrequency[lowerCaseWord] <= 0) {
+					delete this.wordFrequency[lowerCaseWord]; // Use the lowercase word as the key
 				}
 			}
-
 
 			// Update last known content
 			this.lastContent = newContent;
 
 			// Update status bar
-			const totalWords = Object.keys(this.wordFrequency).length;
-			this.statusBar.setText(`${totalWords} unique words today`);
+			//const totalWords = Object.keys(this.wordFrequency).length;
+			//this.statusBar.setText(`${totalWords} unique words today`);
 
 			// Schedule an update for the daily MD file
 			if (!this.updateScheduled) {
