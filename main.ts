@@ -4,11 +4,13 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
 // Define the settings interface
 interface WordScraperSettings {
 	lastUpdated: string;
+	folderPath: string;
 }
 
 // Default settings
 const DEFAULT_SETTINGS: WordScraperSettings = {
-	lastUpdated: ''
+	lastUpdated: '',
+	folderPath: '/' // Default at root folder
 }
 
 // Main plugin class
@@ -67,7 +69,7 @@ export default class WordScraperPlugin extends Plugin {
 		this.statusBar.setText(`0 unique words today`);
 
 		// Add a settings tab
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new WordScraperSettingTab(this.app, this));
 	}
 
 	// Cleanup when the plugin is unloaded
@@ -154,7 +156,7 @@ export default class WordScraperPlugin extends Plugin {
 			// Get or create the daily file
 			const vault = this.app.vault;
 			const today = new Date().toISOString().slice(0, 10);
-			const fileName = `WordScraper-${today}.md`;
+			const fileName = `${this.settings.folderPath}/WordScraper-${today}.md`;
 
 			if (!this.dailyMdFile) {
 				this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
@@ -201,7 +203,7 @@ export default class WordScraperPlugin extends Plugin {
 	private async openDailyWordFile(): Promise<void> {
 		const vault = this.app.vault;
 		const today = new Date().toISOString().slice(0, 10);
-		const fileName = `WordScraper-${today}.md`;
+		const fileName = `${this.settings.folderPath}/WordScraper-${today}.md`;
 
 		if (!this.dailyMdFile) {
 			this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
@@ -230,7 +232,7 @@ export default class WordScraperPlugin extends Plugin {
 }
 
 // Settings tab in the Obsidian settings panel
-class SampleSettingTab extends PluginSettingTab {
+class WordScraperSettingTab extends PluginSettingTab {
 	plugin: WordScraperPlugin;
 
 	constructor(app: App, plugin: WordScraperPlugin) {
@@ -244,13 +246,13 @@ class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
+			.setName('WordScraper Folder')
+			.setDesc(`Specify the folder where WordScraper files will be saved.`)
 			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.lastUpdated)
+				.setPlaceholder('Enter folder path')
+				.setValue(this.plugin.settings.folderPath)
 				.onChange(async (value) => {
-					this.plugin.settings.lastUpdated = value;
+					this.plugin.settings.folderPath = value;
 					await this.plugin.saveSettings();
 				}));
 	}
