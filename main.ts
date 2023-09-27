@@ -10,16 +10,16 @@ interface WordScraperSettings {
 
 // Define an interface to hold the plugin's state
 interface WordScraperState {
-    wordFrequency: { [key: string]: number };
-    lastKnownDate: string;
-    currentFile: string;
-    lastContent: string;
+	wordFrequency: { [key: string]: number };
+	lastKnownDate: string;
+	currentFile: string;
+	lastContent: string;
 }
 
 // Default settings
 const DEFAULT_SETTINGS: WordScraperSettings = {
 	lastUpdated: '',
-	folderPath: '/', // Default at root folder
+	folderPath: '', // Default at root folder
 	excludedFolders: ''
 }
 
@@ -51,14 +51,23 @@ export default class WordScraperPlugin extends Plugin {
 	// Load settings and initialize the plugin
 	async onload() {
 		await this.loadSettings();
-
-		// Load the saved state from disk
-        this.state = await this.loadData() || {
-            wordFrequency: {},
-            lastKnownDate: new Date().toISOString().slice(0, 10),
-            currentFile: "",
-            lastContent: ""
-        };
+		const savedState = await this.loadData();
+		//console.log("Loaded settings:", this.settings);
+		//console.log("Loaded state:", savedState);
+		if (savedState) {
+			this.state = savedState;
+			this.wordFrequency = this.state.wordFrequency;
+			this.lastKnownDate = this.state.lastKnownDate;
+			this.currentFile = this.state.currentFile;
+			this.lastContent = this.state.lastContent;
+		} else {
+			this.state = {
+				wordFrequency: {},
+				lastKnownDate: new Date().toISOString().slice(0, 10),
+				currentFile: "",
+				lastContent: ""
+			};
+		}
 
 		// Register a timer to reset daily word count
 		this.registerInterval(window.setInterval(this.checkDateAndReset.bind(this), 60 * 1000));
@@ -92,13 +101,14 @@ export default class WordScraperPlugin extends Plugin {
 	}
 
 	// Cleanup when the plugin is unloaded
-	onunload() {
-		this.wordFrequency = {};
-		this.dailyMdFile = null;
+	async onunload() {
+		// Save the current state to disk before unloading
+		await this.saveData(this.state);
 	}
 
 	// Handle changes in the editor
 	private async handleChange(change: Editor): Promise<void> {
+		//console.log("Handling editor change...");
 		// Get the active markdown view
 		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
 
@@ -118,12 +128,14 @@ export default class WordScraperPlugin extends Plugin {
 
 			// Check if the file has changed
 			if (activeFile && activeFile.path !== this.currentFile) {
+				//console.log("File changed. Initializing...");
 				this.currentFile = activeFile.path;
 				this.fileInitialized = false;
 			}
 
 			// Initialize the last content if the file is new
 			if (!this.fileInitialized) {
+				//console.log("File is new. Setting last content.");
 				this.lastContent = newContent;
 				this.fileInitialized = true;
 				return;
@@ -177,27 +189,53 @@ export default class WordScraperPlugin extends Plugin {
 			this.state.wordFrequency = this.wordFrequency;
 			this.state.currentFile = this.currentFile;
 			this.state.lastContent = this.lastContent;
-	
+
 			// Save the state to disk
 			await this.saveData(this.state);
+			//console.log("Updated state:", this.state);
 		}
 	}
 
 	// Update the daily Markdown file with the word frequencies
 	private async updateDailyMdFile(): Promise<void> {
+		//console.log("Updating daily Markdown file...");
 		try {
 			// Get or create the daily file
 			const vault = this.app.vault;
 			const today = new Date().toISOString().slice(0, 10);
-			const fileName = `${this.settings.folderPath}/WordScraper-${today}.md`;
 
-			if (!this.dailyMdFile) {
-				this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
+			// Ensure folderPath does not have a trailing '/'
+			let folderPath = this.settings.folderPath.endsWith('/') ?
+				this.settings.folderPath.slice(0, -1) :
+				this.settings.folderPath;
+
+			let fileName = `${folderPath}/WordScraper-${today}.md`;
+
+			// Remove leading slash if it exists
+			if (fileName.startsWith('/')) {
+				fileName = fileName.substring(1);
 			}
 
+			//console.log("Expected fileName:", fileName);
+
+			//console.log("Current state of dailyMdFile:", this.dailyMdFile);
+
+			// Check if the file already exists
+			this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
+
+			//console.log("State of dailyMdFile after getAbstractFileByPath:", this.dailyMdFile);
+
+			// If the file doesn't exist, create it
 			if (!this.dailyMdFile) {
-				this.dailyMdFile = await vault.create(fileName, '');
+				//console.log("Attempting to create file:", fileName);
+				try {
+					this.dailyMdFile = await vault.create(fileName, '');
+				} catch (createError) {
+					console.error("Error during file creation:", createError);
+					return; // Exit the function if file creation fails
+				}
 			}
+
 
 			// Generate the content with additional checks
 			const content = [
@@ -222,23 +260,26 @@ export default class WordScraperPlugin extends Plugin {
 	}
 
 	// Reset the word frequency and daily file at midnight
-    private async checkDateAndReset(): Promise<void> {
-        const currentDate = new Date().toISOString().slice(0, 10);
-        if (currentDate !== this.state.lastKnownDate) {
-            // Reset the state variables
-            this.state.wordFrequency = {};
-            this.state.lastKnownDate = currentDate;
+	private async checkDateAndReset(): Promise<void> {
+		//console.log("Checking date and resetting if needed...");
+		const currentDate = new Date().toISOString().slice(0, 10);
+		if (currentDate !== this.state.lastKnownDate) {
+			// Reset the state variables
+			this.state.wordFrequency = {};
+			this.state.lastKnownDate = currentDate;
 
-            // Save the reset state to disk
-            await this.saveData(this.state);
+			// Save the reset state to disk
+			await this.saveData(this.state);
 
-            this.dailyMdFile = null;
-            await this.updateDailyMdFile();
-        }
-    }
+			this.dailyMdFile = null;
+			await this.updateDailyMdFile();
+		}
+		//console.log("State after reset:", this.state);
+	}
 
 	// Open the daily word file
 	private async openDailyWordFile(): Promise<void> {
+		//console.log("Opening daily word file...");
 		const vault = this.app.vault;
 		const today = new Date().toISOString().slice(0, 10);
 		const fileName = `${this.settings.folderPath}/WordScraper-${today}.md`;
@@ -260,11 +301,14 @@ export default class WordScraperPlugin extends Plugin {
 
 	// Load settings from disk
 	async loadSettings() {
+		//console.log("Loading settings...");
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		//console.log("Loaded settings:", this.settings);
 	}
 
 	// Save settings to disk
 	async saveSettings() {
+		//console.log("Saving settings...");
 		await this.saveData(this.settings);
 	}
 }
