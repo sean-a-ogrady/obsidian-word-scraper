@@ -71,20 +71,21 @@ export default class WordScraperPlugin extends Plugin {
 		if (savedState) {
 			this.state = savedState;
 			this.wordFrequency = Object.fromEntries(
-				Object.entries(this.state.wordFrequency).map(([key, value]) => [key.toLowerCase(), value])
+				Object.entries(this.state.wordFrequency ?? {}).map(([key, value]) => [key.toLowerCase(), value])
 			);
-			this.wordFrequency = this.state.wordFrequency;
+			this.wordFrequency = this.state.wordFrequency ?? {};
 			this.lastKnownDate = this.state.lastKnownDate;
 			this.currentFile = this.state.currentFile;
 			this.lastContent = this.state.lastContent;
 		} else {
 			this.state = {
 				wordFrequency: {},
-				lastKnownDate: getLocalDate(),
+				lastKnownDate: new Date().toISOString().slice(0, 10),
 				currentFile: "",
 				lastContent: ""
 			};
 		}
+
 
 		// Register a timer to reset daily word count
 		this.registerInterval(window.setInterval(this.checkDateAndReset.bind(this), 60 * 1000));
