@@ -6,6 +6,8 @@ interface WordScraperSettings {
 	lastUpdated: string;
 	folderPath: string;
 	excludedFolders: string;
+	updateFrequency: number;
+	stopwords: string;
 }
 
 // Define an interface to hold the plugin's state
@@ -20,7 +22,9 @@ interface WordScraperState {
 const DEFAULT_SETTINGS: WordScraperSettings = {
 	lastUpdated: '',
 	folderPath: '', // Default at root folder
-	excludedFolders: ''
+	excludedFolders: '',
+	updateFrequency: 10000,
+	stopwords: ''
 }
 
 // Main plugin class
@@ -145,8 +149,16 @@ export default class WordScraperPlugin extends Plugin {
 			}
 
 			// Split the old and new content into words and convert to lowercase
-			const oldWords = (this.lastContent.match(/\b\w+\b/g) || []).map(word => word.toLowerCase()) as string[];
-			const newWords = (newContent.match(/\b\w+\b/g) || []).map(word => word.toLowerCase()) as string[];
+			const stopwords = new Set(this.settings.stopwords.split('\n').map(word => word.trim().toLowerCase()));
+
+			const oldWords = (this.lastContent.match(/\b\w+\b/g) || [])
+				.map(word => word.toLowerCase())
+				.filter(word => !stopwords.has(word)) as string[];
+
+			const newWords = (newContent.match(/\b\w+\b/g) || [])
+				.map(word => word.toLowerCase())
+				.filter(word => !stopwords.has(word)) as string[];
+
 
 			// Create frequency maps for old and new words
 			const oldWordFrequency: { [key: string]: number } = {};
@@ -186,7 +198,7 @@ export default class WordScraperPlugin extends Plugin {
 				setTimeout(async () => {
 					await this.updateDailyMdFile();
 					this.updateScheduled = false;
-				}, 1000);
+				}, this.settings.updateFrequency);
 			}
 
 			// Update the state
@@ -349,6 +361,26 @@ class WordScraperSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.excludedFolders)
 				.onChange(async (value) => {
 					this.plugin.settings.excludedFolders = value;
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
+			.setName('Update Frequency')
+			.setDesc('Set the frequency for updating the WordScraper file (in milliseconds).')
+			.addText(text => text
+				.setPlaceholder('milliseconds')
+				.setValue(this.plugin.settings.updateFrequency.toString())
+				.onChange(async (value) => {
+					this.plugin.settings.updateFrequency = parseInt(value, 10);
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
+			.setName('Stopwords')
+			.setDesc('Enter words to exclude, separated by new lines.')
+			.addTextArea(text => text
+				.setPlaceholder('Enter stopwords')
+				.setValue(this.plugin.settings.stopwords)
+				.onChange(async (value) => {
+					this.plugin.settings.stopwords = value;
 					await this.plugin.saveSettings();
 				}));
 
