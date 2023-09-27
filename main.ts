@@ -8,6 +8,14 @@ interface WordScraperSettings {
 	excludedFolders: string;
 }
 
+// Define an interface to hold the plugin's state
+interface WordScraperState {
+    wordFrequency: { [key: string]: number };
+    lastKnownDate: string;
+    currentFile: string;
+    lastContent: string;
+}
+
 // Default settings
 const DEFAULT_SETTINGS: WordScraperSettings = {
 	lastUpdated: '',
@@ -18,6 +26,7 @@ const DEFAULT_SETTINGS: WordScraperSettings = {
 // Main plugin class
 export default class WordScraperPlugin extends Plugin {
 	settings: WordScraperSettings;
+	state: WordScraperState;
 
 	// Object to hold the frequency of each word
 	private wordFrequency: { [key: string]: number } = {};
@@ -42,6 +51,14 @@ export default class WordScraperPlugin extends Plugin {
 	// Load settings and initialize the plugin
 	async onload() {
 		await this.loadSettings();
+
+		// Load the saved state from disk
+        this.state = await this.loadData() || {
+            wordFrequency: {},
+            lastKnownDate: new Date().toISOString().slice(0, 10),
+            currentFile: "",
+            lastContent: ""
+        };
 
 		// Register a timer to reset daily word count
 		this.registerInterval(window.setInterval(this.checkDateAndReset.bind(this), 60 * 1000));
@@ -155,6 +172,14 @@ export default class WordScraperPlugin extends Plugin {
 					this.updateScheduled = false;
 				}, 1000);
 			}
+
+			// Update the state
+			this.state.wordFrequency = this.wordFrequency;
+			this.state.currentFile = this.currentFile;
+			this.state.lastContent = this.lastContent;
+	
+			// Save the state to disk
+			await this.saveData(this.state);
 		}
 	}
 
@@ -197,15 +222,20 @@ export default class WordScraperPlugin extends Plugin {
 	}
 
 	// Reset the word frequency and daily file at midnight
-	private async checkDateAndReset(): Promise<void> {
-		const currentDate = new Date().toISOString().slice(0, 10);
-		if (currentDate !== this.lastKnownDate) {
-			this.wordFrequency = {};
-			this.lastKnownDate = currentDate;
-			this.dailyMdFile = null;
-			await this.updateDailyMdFile();
-		}
-	}
+    private async checkDateAndReset(): Promise<void> {
+        const currentDate = new Date().toISOString().slice(0, 10);
+        if (currentDate !== this.state.lastKnownDate) {
+            // Reset the state variables
+            this.state.wordFrequency = {};
+            this.state.lastKnownDate = currentDate;
+
+            // Save the reset state to disk
+            await this.saveData(this.state);
+
+            this.dailyMdFile = null;
+            await this.updateDailyMdFile();
+        }
+    }
 
 	// Open the daily word file
 	private async openDailyWordFile(): Promise<void> {
