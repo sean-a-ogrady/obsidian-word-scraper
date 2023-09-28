@@ -311,12 +311,17 @@ export default class WordScraperPlugin extends Plugin {
 	// Reset the state variables and save to disk
 	private async resetState(): Promise<void> {
 		console.log("Resetting state...");
+		this.fileInitialized = false;
 		this.state = {
 			wordFrequency: {},
 			lastKnownDate: getLocalDate(),
 			currentFile: "",
 			lastContent: ""
 		};
+		this.state.wordFrequency = {};
+		this.state.lastKnownDate = getLocalDate();
+		this.state.currentFile = "";
+		this.state.lastContent = "";
 		await this.saveData(this.state);
 		console.log("State after reset:", this.state);
 	}
