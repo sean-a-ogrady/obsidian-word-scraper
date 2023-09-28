@@ -102,7 +102,7 @@ export default class WordScraperPlugin extends Plugin {
 		);
 
 		// Add a ribbon icon to open the daily word file
-		const ribbonIconEl = this.addRibbonIcon('pencil', 'Word Scraper', async (evt: MouseEvent) => {
+		const ribbonIconEl = this.addRibbonIcon('pencil', 'WordScraper', async (evt: MouseEvent) => {
 			await this.openDailyWordFile();
 		});
 		ribbonIconEl.addClass('word-scraper-ribbon');
@@ -342,11 +342,11 @@ export default class WordScraperPlugin extends Plugin {
 		if (!this.dailyMdFile || !this.settings.enableJsonExport) {
 			return;
 		}
-
+	
 		const vault = this.app.vault;
 		const jsonExportPath = this.settings.jsonExportPath || this.settings.folderPath;
 		const jsonFileName = `${jsonExportPath}/${this.dailyMdFile.basename}.json`;
-
+	
 		const jsonData = Object.entries(this.wordFrequency)
 			.map(([word, frequency], index) => {
 				const sentimentResult = this.sentiment.analyze(word); // Get the sentiment of the word
@@ -358,13 +358,23 @@ export default class WordScraperPlugin extends Plugin {
 				};
 			})
 			.filter(entry => entry.frequency > 0);
-
+	
 		if (jsonData.length === 0) {
 			return;
 		}
-
-		await vault.create(jsonFileName, JSON.stringify(jsonData, null, 2));
+	
+		// Check if the file already exists
+		const existingFile = await vault.getAbstractFileByPath(jsonFileName) as TFile;
+	
+		if (existingFile) {
+			// If the file exists, modify it
+			await vault.modify(existingFile, JSON.stringify(jsonData, null, 2));
+		} else {
+			// If the file doesn't exist, create it
+			await vault.create(jsonFileName, JSON.stringify(jsonData, null, 2));
+		}
 	}
+	
 
 
 	// Load settings from disk
