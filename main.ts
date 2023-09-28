@@ -378,15 +378,15 @@ export default class WordScraperPlugin extends Plugin {
 			new Notice('JSON Export is disabled in settings. Please enable it to proceed.');
 			return;
 		}
-
+	
 		if (!this.dailyMdFile) {
 			return;
 		}
-
+	
 		const vault = this.app.vault;
 		const jsonExportPath = this.settings.jsonExportPath || this.settings.folderPath;
 		const jsonFileName = `${jsonExportPath}/${this.dailyMdFile.basename}.json`;
-
+	
 		const jsonData = Object.entries(this.wordFrequency)
 			.map(([word, frequency], index) => {
 				const sentimentResult = this.sentiment.analyze(word); // Get the sentiment of the word
@@ -398,22 +398,27 @@ export default class WordScraperPlugin extends Plugin {
 				};
 			})
 			.filter(entry => entry.frequency > 0);
-
+	
 		if (jsonData.length === 0) {
 			return;
 		}
-
+	
+		// Wrap jsonData inside an object with a "words" key
+		const wrappedJsonData = {
+			words: jsonData
+		};
+	
 		// Check if the file already exists
 		const existingFile = await vault.getAbstractFileByPath(jsonFileName) as TFile;
-
+	
 		if (existingFile) {
 			// If the file exists, delete it
 			await vault.delete(existingFile);
 		}
-
+	
 		// Create a new file with the updated data
-		await vault.create(jsonFileName, JSON.stringify(jsonData, null, 2));
-	}
+		await vault.create(jsonFileName, JSON.stringify(wrappedJsonData, null, 2));
+	}	
 
 
 	// Load settings from disk

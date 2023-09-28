@@ -81,3 +81,4 @@ In the future, I plan to add more interesting data attached to each word.
 - [ ] Some words remain even after deletion
 - [ ] Words with apostrophes won't be scraped
 - [ ] Words with hyphens won't be scraped
+- [ ] JSON Export formatting
