@@ -92,10 +92,6 @@ export default class WordScraperPlugin extends Plugin {
 			};
 		}
 
-
-		// Register a timer to reset daily word count
-		this.registerInterval(window.setInterval(this.checkDateAndReset.bind(this), 60 * 1000));
-
 		// Register an event to listen for editor changes
 		this.registerEvent(
 			this.app.workspace.on('editor-change', this.handleChange.bind(this))
@@ -240,44 +236,23 @@ export default class WordScraperPlugin extends Plugin {
 
 	// Update the daily Markdown file with the word frequencies
 	private async updateDailyMdFile(): Promise<void> {
-		//console.log("Updating daily Markdown file...");
 		try {
-			// Get or create the daily file
 			const vault = this.app.vault;
 			const today = getLocalDate();
-
-			// Ensure folderPath does not have a trailing '/'
-			let folderPath = this.settings.folderPath.endsWith('/') ?
-				this.settings.folderPath.slice(0, -1) :
-				this.settings.folderPath;
-
-			let fileName = `${folderPath}/WordScraper-${today}.md`;
+			let fileName = `${this.settings.folderPath}/WordScraper-${today}.md`;
 
 			// Remove leading slash if it exists
 			if (fileName.startsWith('/')) {
 				fileName = fileName.substring(1);
 			}
 
-			//console.log("Expected fileName:", fileName);
-
-			//console.log("Current state of dailyMdFile:", this.dailyMdFile);
-
-			// Check if the file already exists
 			this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
 
-			//console.log("State of dailyMdFile after getAbstractFileByPath:", this.dailyMdFile);
-
-			// If the file doesn't exist, create it
+			// If the file doesn't exist, create it and reset the state
 			if (!this.dailyMdFile) {
-				//console.log("Attempting to create file:", fileName);
-				try {
-					this.dailyMdFile = await vault.create(fileName, '');
-				} catch (createError) {
-					console.error("Error during file creation:", createError);
-					return; // Exit the function if file creation fails
-				}
+				this.dailyMdFile = await vault.create(fileName, '');
+				await this.resetState();  // Reset the state when a new file is created
 			}
-
 
 			// Generate the content with additional checks
 			const content = [
@@ -297,24 +272,14 @@ export default class WordScraperPlugin extends Plugin {
 		}
 	}
 
-	// Reset the word frequency and daily file at midnight
-	private async checkDateAndReset(): Promise<void> {
-		//console.log("Checking date and resetting if needed...");
-		const currentDate = getLocalDate();
-		if (currentDate !== this.state.lastKnownDate) {
-			await this.exportToJson();
-			// Reset the state variables
-			this.state.wordFrequency = {};
-			this.state.lastKnownDate = currentDate;
 
-			// Save the reset state to disk
-			await this.saveData(this.state);
-
-			this.dailyMdFile = null;
-			await this.updateDailyMdFile();
-		}
-		//console.log("State after reset:", this.state);
+	// Reset the state variables and save to disk
+	private async resetState(): Promise<void> {
+		this.state.wordFrequency = {};
+		this.state.lastKnownDate = getLocalDate();
+		await this.saveData(this.state);
 	}
+
 
 	// Open the daily word file
 	private async openDailyWordFile(): Promise<void> {
@@ -343,15 +308,15 @@ export default class WordScraperPlugin extends Plugin {
 			new Notice('JSON Export is disabled in settings. Please enable it to proceed.');
 			return;
 		}
-	
+
 		if (!this.dailyMdFile) {
 			return;
-		}	
-	
+		}
+
 		const vault = this.app.vault;
 		const jsonExportPath = this.settings.jsonExportPath || this.settings.folderPath;
 		const jsonFileName = `${jsonExportPath}/${this.dailyMdFile.basename}.json`;
-	
+
 		const jsonData = Object.entries(this.wordFrequency)
 			.map(([word, frequency], index) => {
 				const sentimentResult = this.sentiment.analyze(word); // Get the sentiment of the word
@@ -363,23 +328,23 @@ export default class WordScraperPlugin extends Plugin {
 				};
 			})
 			.filter(entry => entry.frequency > 0);
-	
+
 		if (jsonData.length === 0) {
 			return;
 		}
-	
+
 		// Check if the file already exists
 		const existingFile = await vault.getAbstractFileByPath(jsonFileName) as TFile;
-	
+
 		if (existingFile) {
 			// If the file exists, delete it
 			await vault.delete(existingFile);
 		}
-	
+
 		// Create a new file with the updated data
 		await vault.create(jsonFileName, JSON.stringify(jsonData, null, 2));
 	}
-	
+
 
 	// Load settings from disk
 	async loadSettings() {
