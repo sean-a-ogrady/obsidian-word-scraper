@@ -339,9 +339,14 @@ export default class WordScraperPlugin extends Plugin {
 	}
 
 	private async exportToJson(): Promise<void> {
-		if (!this.dailyMdFile || !this.settings.enableJsonExport) {
+		if (!this.settings.enableJsonExport) {
+			new Notice('JSON Export is disabled in settings. Please enable it to proceed.');
 			return;
 		}
+	
+		if (!this.dailyMdFile) {
+			return;
+		}	
 	
 		const vault = this.app.vault;
 		const jsonExportPath = this.settings.jsonExportPath || this.settings.folderPath;
@@ -367,15 +372,14 @@ export default class WordScraperPlugin extends Plugin {
 		const existingFile = await vault.getAbstractFileByPath(jsonFileName) as TFile;
 	
 		if (existingFile) {
-			// If the file exists, modify it
-			await vault.modify(existingFile, JSON.stringify(jsonData, null, 2));
-		} else {
-			// If the file doesn't exist, create an empty file first
-			const newFile = await vault.create(jsonFileName, '');
-			// Then modify the new file to populate it
-			await vault.modify(newFile, JSON.stringify(jsonData, null, 2));
+			// If the file exists, delete it
+			await vault.delete(existingFile);
 		}
-	}	
+	
+		// Create a new file with the updated data
+		await vault.create(jsonFileName, JSON.stringify(jsonData, null, 2));
+	}
+	
 
 	// Load settings from disk
 	async loadSettings() {
