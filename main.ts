@@ -22,6 +22,7 @@ interface WordScraperState {
 	lastKnownDate: string;
 	currentFile: string;
 	lastContent: string;
+	settings: WordScraperSettings;
 }
 
 // Default settings
@@ -77,6 +78,7 @@ export default class WordScraperPlugin extends Plugin {
 		//console.log("Loaded state:", savedState);
 		if (savedState) {
 			this.state = savedState;
+			this.settings = savedState.settings ?? DEFAULT_SETTINGS;
 			this.wordFrequency = Object.fromEntries(
 				Object.entries(this.state.wordFrequency ?? {}).map(([key, value]) => [key.toLowerCase(), value])
 			);
@@ -89,7 +91,8 @@ export default class WordScraperPlugin extends Plugin {
 				wordFrequency: {},
 				lastKnownDate: getLocalDate(),
 				currentFile: "",
-				lastContent: ""
+				lastContent: "",
+				settings: this.settings
 			};
 		}
 
@@ -158,6 +161,7 @@ export default class WordScraperPlugin extends Plugin {
 		const savedState = await this.loadData();
 		if (savedState) {
 			this.state = savedState;
+			this.settings = savedState.settings ?? DEFAULT_SETTINGS;
 			return savedState;
 		} else {
 			await this.resetState();
@@ -315,12 +319,14 @@ export default class WordScraperPlugin extends Plugin {
 			wordFrequency: {},
 			lastKnownDate: getLocalDate(),
 			currentFile: "",
-			lastContent: ""
+			lastContent: "",
+			settings: this.settings
 		};
 		this.state.wordFrequency = {};
 		this.state.lastKnownDate = getLocalDate();
 		this.state.currentFile = "";
 		this.state.lastContent = "";
+		this.state.settings = this.settings;
 		this.wordFrequency = this.state.wordFrequency;
 		this.lastKnownDate = this.state.lastKnownDate;
 		this.currentFile = this.state.currentFile;
@@ -411,16 +417,21 @@ export default class WordScraperPlugin extends Plugin {
 
 
 	// Load settings from disk
+	// Load settings from disk
 	async loadSettings() {
-		//console.log("Loading settings...");
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-		//console.log("Loaded settings:", this.settings);
+		const savedState = await this.loadData();
+		if (savedState && savedState.settings) {
+			this.settings = Object.assign({}, DEFAULT_SETTINGS, savedState.settings);
+		} else {
+			this.settings = DEFAULT_SETTINGS;
+		}
 	}
 
 	// Save settings to disk
 	async saveSettings() {
 		//console.log("Saving settings...");
-		await this.saveData(this.settings);
+		this.state.settings = this.settings;
+		await this.saveData(this.state);
 	}
 }
 
