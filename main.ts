@@ -130,6 +130,16 @@ export default class WordScraperPlugin extends Plugin {
 			}
 		});
 
+		// Listen for file deletion events
+		this.registerEvent(
+			this.app.vault.on('delete', async (file: TFile) => {
+				if (file.path === this.currentFile) {
+					this.fileInitialized = false;
+					await this.resetState();
+				}
+			})
+		);
+
 		// Add a status bar item to show the number of unique words
 		//this.statusBar = this.addStatusBarItem();
 		//this.statusBar.setText(`0 unique words today`);
@@ -157,6 +167,13 @@ export default class WordScraperPlugin extends Plugin {
 
 			// Get the active file
 			const activeFile = this.app.workspace.getActiveFile();
+
+			// Reset state and fileInitialized flag if the file is deleted or cleared
+			if (!activeFile || newContent === '') {
+				this.fileInitialized = false;
+				await this.resetState();
+				return;
+			}
 
 			// Check if the file is in an excluded folder
 			const excludedFolders = this.settings.excludedFolders.split('\n').filter(Boolean); // Filter out empty strings
@@ -280,13 +297,19 @@ export default class WordScraperPlugin extends Plugin {
 		}
 	}
 
-
 	// Reset the state variables and save to disk
 	private async resetState(): Promise<void> {
-		this.state.wordFrequency = {};
-		this.state.lastKnownDate = getLocalDate();
+		console.log("Resetting state...");
+		this.state = {
+			wordFrequency: {},
+			lastKnownDate: getLocalDate(),
+			currentFile: "",
+			lastContent: ""
+		};
 		await this.saveData(this.state);
+		console.log("State after reset:", this.state);
 	}
+
 
 	// Used for manual resetting
 	private async resetDailyMdFileAndState(): Promise<void> {
