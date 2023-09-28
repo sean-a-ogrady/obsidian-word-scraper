@@ -370,12 +370,12 @@ export default class WordScraperPlugin extends Plugin {
 			// If the file exists, modify it
 			await vault.modify(existingFile, JSON.stringify(jsonData, null, 2));
 		} else {
-			// If the file doesn't exist, create it
-			await vault.create(jsonFileName, JSON.stringify(jsonData, null, 2));
+			// If the file doesn't exist, create an empty file first
+			const newFile = await vault.create(jsonFileName, '');
+			// Then modify the new file to populate it
+			await vault.modify(newFile, JSON.stringify(jsonData, null, 2));
 		}
-	}
-	
-
+	}	
 
 	// Load settings from disk
 	async loadSettings() {
