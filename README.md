@@ -76,9 +76,11 @@ In the future, I plan to add more interesting data attached to each word.
 
 *Please share with me any feedback on how to improve my project! At the moment, it is functional, but definitely has some bugs.*
 
+These will be addressed in the next release:
+
 - [ ] State clearing is quite buggy
-- [ ] Settings will sometimes not save
+- [x] Settings will sometimes not save
 - [ ] Some words remain even after deletion
 - [ ] Words with apostrophes won't be scraped
 - [ ] Words with hyphens won't be scraped
-- [ ] JSON Export formatting
+- [x] JSON Export formatting
