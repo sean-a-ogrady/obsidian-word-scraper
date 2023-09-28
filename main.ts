@@ -121,6 +121,14 @@ export default class WordScraperPlugin extends Plugin {
 			}
 		});
 
+		// Add a command to reset the file and state manually
+		this.addCommand({
+			id: 'reset-daily-md-file-and-state',
+			name: 'Reset Daily MD File and State',
+			callback: async () => {
+				await this.resetDailyMdFileAndState();
+			}
+		});
 
 		// Add a status bar item to show the number of unique words
 		//this.statusBar = this.addStatusBarItem();
@@ -279,6 +287,20 @@ export default class WordScraperPlugin extends Plugin {
 		this.state.lastKnownDate = getLocalDate();
 		await this.saveData(this.state);
 	}
+
+	// Used for manual resetting
+	private async resetDailyMdFileAndState(): Promise<void> {
+		// Reset the state
+		await this.resetState();
+
+		// Reset the daily Markdown file
+		if (this.dailyMdFile) {
+			await this.app.vault.modify(this.dailyMdFile, ''); // Empty the file
+		} else {
+			new Notice('No daily Markdown file to reset.');
+		}
+	}
+
 
 
 	// Open the daily word file
