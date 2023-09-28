@@ -70,7 +70,7 @@ export default class WordScraperPlugin extends Plugin {
 	// Load settings and initialize the plugin
 	async onload() {
 		await this.loadSettings();
-		const savedState = await this.loadData();
+		const savedState = await this.loadOrInitializeState();
 		this.sentiment = new Sentiment();
 		//console.log("Loaded settings:", this.settings);
 		//console.log("Loaded state:", savedState);
@@ -153,6 +153,17 @@ export default class WordScraperPlugin extends Plugin {
 		// Save the current state to disk before unloading
 		await this.saveData(this.state);
 	}
+
+	private async loadOrInitializeState(): Promise<WordScraperState> {
+		const savedState = await this.loadData();
+		if (savedState) {
+		  this.state = savedState;
+		  return savedState;
+		} else {
+		  this.resetState();
+		  return this.state;
+		}
+	  }	  
 
 	// Handle changes in the editor
 	private async handleChange(change: Editor): Promise<void> {
