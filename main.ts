@@ -1,6 +1,10 @@
 // Import Obsidian API and types
 import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 
+// Had to allow synthetic imports in tsconfig
+import Sentiment from 'sentiment';
+
+
 // Define the settings interface
 interface WordScraperSettings {
 	lastUpdated: string;
@@ -41,6 +45,7 @@ function getLocalDate() {
 export default class WordScraperPlugin extends Plugin {
 	settings: WordScraperSettings;
 	state: WordScraperState;
+	private sentiment: Sentiment;
 
 	// Object to hold the frequency of each word
 	private wordFrequency: { [key: string]: number } = {};
@@ -66,6 +71,7 @@ export default class WordScraperPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		const savedState = await this.loadData();
+		this.sentiment = new Sentiment();
 		//console.log("Loaded settings:", this.settings);
 		//console.log("Loaded state:", savedState);
 		if (savedState) {
@@ -342,7 +348,15 @@ export default class WordScraperPlugin extends Plugin {
 		const jsonFileName = `${jsonExportPath}/${this.dailyMdFile.basename}.json`;
 
 		const jsonData = Object.entries(this.wordFrequency)
-			.map(([word, frequency]) => ({ word, frequency }))
+			.map(([word, frequency], index) => {
+				const sentimentResult = this.sentiment.analyze(word); // Get the sentiment of the word
+				return {
+					id: index + 1, // Generate an id for each word
+					word,
+					frequency,
+					sentiment: sentimentResult.score // Use the sentiment score
+				};
+			})
 			.filter(entry => entry.frequency > 0);
 
 		if (jsonData.length === 0) {
@@ -351,6 +365,7 @@ export default class WordScraperPlugin extends Plugin {
 
 		await vault.create(jsonFileName, JSON.stringify(jsonData, null, 2));
 	}
+
 
 	// Load settings from disk
 	async loadSettings() {
