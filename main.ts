@@ -250,8 +250,8 @@ export default class WordScraperPlugin extends Plugin {
 
 			// If the file doesn't exist, create it and reset the state
 			if (!this.dailyMdFile) {
-				this.dailyMdFile = await vault.create(fileName, '');
 				await this.resetState();  // Reset the state when a new file is created
+				this.dailyMdFile = await vault.create(fileName, '');
 			}
 
 			// Generate the content with additional checks
