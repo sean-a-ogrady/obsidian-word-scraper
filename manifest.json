@@ -1,7 +1,7 @@
 {
 	"id": "word-scraper",
 	"name": "WordScraper",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "This is a plugin that captures the words you type into a new markdown file every day.",
 	"author": "Sean O'Grady",
