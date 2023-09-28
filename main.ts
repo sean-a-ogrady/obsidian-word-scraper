@@ -69,6 +69,7 @@ export default class WordScraperPlugin extends Plugin {
 
 	// Load settings and initialize the plugin
 	async onload() {
+		console.log("WordScaper loading...");
 		await this.loadSettings();
 		const savedState = await this.loadOrInitializeState();
 		this.sentiment = new Sentiment();
@@ -86,7 +87,7 @@ export default class WordScraperPlugin extends Plugin {
 		} else {
 			this.state = {
 				wordFrequency: {},
-				lastKnownDate: new Date().toISOString().slice(0, 10),
+				lastKnownDate: getLocalDate(),
 				currentFile: "",
 				lastContent: ""
 			};
@@ -135,7 +136,6 @@ export default class WordScraperPlugin extends Plugin {
 			this.app.vault.on('delete', async (file: TFile) => {
 				if (file.path === this.currentFile) {
 					this.fileInitialized = false;
-					await this.resetState();
 				}
 			})
 		);
@@ -157,13 +157,13 @@ export default class WordScraperPlugin extends Plugin {
 	private async loadOrInitializeState(): Promise<WordScraperState> {
 		const savedState = await this.loadData();
 		if (savedState) {
-		  this.state = savedState;
-		  return savedState;
+			this.state = savedState;
+			return savedState;
 		} else {
-		  this.resetState();
-		  return this.state;
+			await this.resetState();
+			return this.state;
 		}
-	  }	  
+	}
 
 	// Handle changes in the editor
 	private async handleChange(change: Editor): Promise<void> {
@@ -179,10 +179,9 @@ export default class WordScraperPlugin extends Plugin {
 			// Get the active file
 			const activeFile = this.app.workspace.getActiveFile();
 
-			// Reset state and fileInitialized flag if the file is deleted or cleared
+			// Reset fileInitialized flag if the file is deleted or cleared
 			if (!activeFile || newContent === '') {
 				this.fileInitialized = false;
-				await this.resetState();
 				return;
 			}
 
@@ -322,6 +321,10 @@ export default class WordScraperPlugin extends Plugin {
 		this.state.lastKnownDate = getLocalDate();
 		this.state.currentFile = "";
 		this.state.lastContent = "";
+		this.wordFrequency = this.state.wordFrequency;
+		this.lastKnownDate = this.state.lastKnownDate;
+		this.currentFile = this.state.currentFile;
+		this.lastContent = this.state.lastContent;
 		await this.saveData(this.state);
 		console.log("State after reset:", this.state);
 	}
