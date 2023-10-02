@@ -359,13 +359,10 @@ export default class WordScraperPlugin extends Plugin {
 		const fileName = `${this.settings.folderPath}/WordScraper-${today}.md`;
 
 		if (!this.dailyMdFile) {
+			this.exportToJson(); // Before creating new file, export previous to JSON
 			this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
-		}
-
-		if (!this.dailyMdFile) {
 			this.dailyMdFile = await vault.create(fileName, '');
 		}
-
 		if (this.dailyMdFile) {
 			this.app.workspace.getLeaf().openFile(this.dailyMdFile);
 		} else {
