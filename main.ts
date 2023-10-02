@@ -291,7 +291,8 @@ export default class WordScraperPlugin extends Plugin {
 
 			// If the file doesn't exist, create it and reset the state
 			if (!this.dailyMdFile) {
-				await this.exportToJson(); // Before creating new file, export previous to JSON
+				if (!this.settings.enableAutomaticJsonExport) new Notice('Automatic JSON Export is disabled in settings.');
+				else await this.exportToJson(); // Before creating new file, export previous to JSON
 				await this.resetState();  // Reset the state when a new file is created
 				this.dailyMdFile = await vault.create(fileName, '');
 			}
