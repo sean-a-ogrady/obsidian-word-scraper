@@ -1,5 +1,5 @@
 // Import Obsidian API and types
-import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
 
 // Had to allow synthetic imports in tsconfig
 import Sentiment from 'sentiment';
@@ -289,6 +289,7 @@ export default class WordScraperPlugin extends Plugin {
 
 			// If the file doesn't exist, create it and reset the state
 			if (!this.dailyMdFile) {
+				await this.exportToJson(); // Before creating new file, export previous to JSON
 				await this.resetState();  // Reset the state when a new file is created
 				this.dailyMdFile = await vault.create(fileName, '');
 			}
@@ -358,9 +359,10 @@ export default class WordScraperPlugin extends Plugin {
 		const today = getLocalDate();
 		const fileName = `${this.settings.folderPath}/WordScraper-${today}.md`;
 
+		// If the file doesn't exist, create it and reset the state
 		if (!this.dailyMdFile) {
-			this.exportToJson(); // Before creating new file, export previous to JSON
-			this.dailyMdFile = await vault.getAbstractFileByPath(fileName) as TFile;
+			await this.exportToJson(); // Before creating new file, export previous to JSON
+			await this.resetState();  // Reset the state when a new file is created
 			this.dailyMdFile = await vault.create(fileName, '');
 		}
 		if (this.dailyMdFile) {
@@ -375,50 +377,84 @@ export default class WordScraperPlugin extends Plugin {
 			new Notice('JSON Export is disabled in settings. Please enable it to proceed.');
 			return;
 		}
-	
-		if (!this.dailyMdFile) {
+
+		const latestFile = await this.findLatestWordScraperFile();
+		console.log(`Exporting ${latestFile?.basename} to JSON...`);
+		if (!latestFile) {
 			return;
 		}
-	
+
+		// Read the content of the latest WordScraper file
+		const content = await this.app.vault.read(latestFile);
+		const wordFrequency = this.parseWordFrequencies(content);
+
 		const vault = this.app.vault;
 		const jsonExportPath = this.settings.jsonExportPath || this.settings.folderPath;
-		const jsonFileName = `${jsonExportPath}/${this.dailyMdFile.basename}.json`;
-	
-		const jsonData = Object.entries(this.wordFrequency)
+		const jsonFileName = `${jsonExportPath}/${latestFile.basename}.json`;
+
+		const jsonData = Object.entries(wordFrequency)
 			.map(([word, frequency], index) => {
-				const sentimentResult = this.sentiment.analyze(word); // Get the sentiment of the word
+				const sentimentResult = this.sentiment.analyze(word);
 				return {
-					id: index + 1, // Generate an id for each word
+					id: index + 1,
 					word,
 					frequency,
-					sentiment: sentimentResult.score // Use the sentiment score
+					sentiment: sentimentResult.score
 				};
 			})
 			.filter(entry => entry.frequency > 0);
-	
+
 		if (jsonData.length === 0) {
 			return;
 		}
-	
-		// Wrap jsonData inside an object with a "words" key
+
 		const wrappedJsonData = {
 			words: jsonData
 		};
-	
-		// Check if the file already exists
+
 		const existingFile = await vault.getAbstractFileByPath(jsonFileName) as TFile;
-	
 		if (existingFile) {
-			// If the file exists, delete it
 			await vault.delete(existingFile);
 		}
-	
-		// Create a new file with the updated data
+
 		await vault.create(jsonFileName, JSON.stringify(wrappedJsonData, null, 2));
-	}	
+		console.log(`JSON File ${jsonFileName} created!`);
+	}
 
 
-	// Load settings from disk
+	private async findLatestWordScraperFile(): Promise<TFile | null> {
+		const folderPath = this.settings.folderPath;
+		const folder = this.app.vault.getAbstractFileByPath(folderPath);
+
+		if (!folder || folder instanceof TFile) {
+			return null;
+		}
+
+		const files = (folder as TFolder).children.filter(file => file instanceof TFile) as TFile[];
+		const wordScraperFiles = files.filter(file => file.basename.startsWith("WordScraper-"));
+
+		if (wordScraperFiles.length === 0) {
+			return null;
+		}
+		return wordScraperFiles[wordScraperFiles.length - 1];
+	}
+
+	private parseWordFrequencies(content: string): { [key: string]: number } {
+		const wordFrequency: { [key: string]: number } = {};
+		const lines = content.split('\n');
+
+		for (const line of lines) {
+			const match = line.match(/^(\w+):\s*(\d+)$/);
+			if (match) {
+				const word = match[1];
+				const frequency = parseInt(match[2], 10);
+				wordFrequency[word] = frequency;
+			}
+		}
+
+		return wordFrequency;
+	}
+
 	// Load settings from disk
 	async loadSettings() {
 		const savedState = await this.loadData();
