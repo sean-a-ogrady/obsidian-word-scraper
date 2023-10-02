@@ -14,6 +14,7 @@ interface WordScraperSettings {
 	stopwords: string;
 	enableJsonExport: boolean;
 	jsonExportPath: string;
+	enableAutomaticJsonExport: boolean;
 }
 
 // Define an interface to hold the plugin's state
@@ -33,7 +34,8 @@ const DEFAULT_SETTINGS: WordScraperSettings = {
 	updateFrequency: 10000,
 	stopwords: '',
 	enableJsonExport: false,
-	jsonExportPath: ''
+	jsonExportPath: '',
+	enableAutomaticJsonExport: false
 }
 
 // Bug fix for faulty date interpretation
@@ -529,14 +531,22 @@ class WordScraperSettingTab extends PluginSettingTab {
 				}));
 		new Setting(containerEl)
 			.setName('Enable JSON Export')
-			.setDesc('Toggle to enable JSON export. When a new WordScraper file is created, a JSON file of the previous one will be created.')
+			.setDesc('Toggle to enable JSON export. Enables command palette item and automatic export.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.enableJsonExport)
 				.onChange(async (value) => {
 					this.plugin.settings.enableJsonExport = value;
 					await this.plugin.saveSettings();
 				}));
-
+		new Setting(containerEl)
+			.setName('Enable Automatic JSON Export')
+			.setDesc('Toggle to enable automatic JSON export. When a new WordScraper file is created, a JSON file of the previous one will be created.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableAutomaticJsonExport)
+				.onChange(async (value) => {
+					this.plugin.settings.enableAutomaticJsonExport = value;
+					await this.plugin.saveSettings();
+				}));
 		new Setting(containerEl)
 			.setName('JSON Export Path')
 			.setDesc('Specify the folder path to export the JSON file.')

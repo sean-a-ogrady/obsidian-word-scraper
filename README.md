@@ -78,7 +78,7 @@ In the future, I plan to add more interesting data attached to each word.
 
 These will be addressed in the next release:
 
-- [ ] State clearing is quite buggy
+- [x] State clearing is quite buggy
 - [x] Settings will sometimes not save
 - [ ] Some words remain even after deletion
 - [ ] Words with apostrophes won't be scraped
