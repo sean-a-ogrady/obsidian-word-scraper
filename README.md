@@ -83,4 +83,4 @@ These will be addressed in the next release:
 - [ ] Some words remain even after deletion
 - [ ] Words with apostrophes won't be scraped
 - [ ] Words with hyphens won't be scraped
-- [x] JSON Export formatting
+- [x] JSON Export formatting 
